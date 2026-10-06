@@ -1,0 +1,131 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Download NLTK data
+        run: |
+          python -m nltk.downloader -d ./nltk_data punkt punkt_tab stopwords
+
+      - name: Run unit tests
+        run: |
+          PYTHONPATH=. pytest tests/ -v --cov=src --cov=api --cov-report=term-missing
+
+      - name: Validate model artifact exists
+        run: |
+          if [ ! -f models/spam_classifier.joblib ]; then
+            echo "Model artifact not found. Run training first."
+            exit 1
+          fi
+
+  train:
+    name: Train Model
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download NLTK data
+        run: |
+          python -m nltk.downloader -d ./nltk_data punkt punkt_tab stopwords
+
+      - name: Run training
+        run: |
+          PYTHONPATH=. python training/train.py
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spam-classifier-model
+          path: |
+            models/spam_classifier.joblib
+            models/spam_classifier.json
+          retention-days: 7
+
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: train
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: spam-classifier-api:latest
+          load: true
+
+      - name: Build Streamlit image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.streamlit
+          push: false
+          tags: spam-classifier-streamlit:latest
+          load: true
+
+      - name: Test API container
+        run: |
+          docker run -d --name test-api -p 8000:8000 spam-classifier-api:latest
+          sleep 10
+          curl -f http://localhost:8000/health
+          curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"text": "FREE MONEY NOW"}'
+          docker stop test-api
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    environment: production
+    steps:
+      - name: Deploy to Render
+        run: |
+          echo "Deploy step - configure your deployment target here"
+          # Example: Render, Fly.io, Railway, AWS, GCP, etc.
+          # This is a placeholder - replace with actual deployment commands
