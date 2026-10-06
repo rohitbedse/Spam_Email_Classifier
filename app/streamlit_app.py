@@ -1,8 +1,9 @@
+import os
 import streamlit as st
 import requests
 from typing import Optional
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 
 @st.cache_data(ttl=60)
@@ -37,7 +38,7 @@ def predict_via_api(text: str) -> Optional[dict]:
         else:
             st.error(f"API error: {resp.status_code} - {resp.text}")
     except requests.exceptions.ConnectionError:
-        st.error("Cannot connect to API. Make sure the FastAPI server is running on port 8000.")
+        st.error("Cannot connect to API. Make sure the FastAPI server is running.")
     except requests.exceptions.Timeout:
         st.error("API request timed out.")
     except Exception as e:
@@ -53,7 +54,7 @@ def main():
     )
 
     st.title("📧 Email/SMS Spam Classifier")
-    st.caption("Powered by TF-IDF + Logistic Regression")
+    st.caption("Powered by TF-IDF + Multinomial Naive Bayes")
 
     api_healthy = check_api_health()
 
@@ -109,7 +110,7 @@ def main():
         **How it works:**
         1. Text is preprocessed (lowercase, tokenization, stopword removal, stemming)
         2. Converted to TF-IDF vectors with unigrams and bigrams
-        3. Classified using Logistic Regression with balanced class weights
+        3. Classified using Multinomial Naive Bayes (alpha=0.1)
         </small>
         """,
         unsafe_allow_html=True,

@@ -37,4 +37,6 @@ class SpamPredictor:
         return [self.predict(text) for text in texts]
 
 
-predictor = SpamPredictor()
+def get_predictor(model_path: Path = MODEL_PATH) -> SpamPredictor:
+    """Factory function for lazy predictor instantiation."""
+    return SpamPredictor(model_path)

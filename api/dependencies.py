@@ -3,12 +3,12 @@ from pathlib import Path
 from functools import lru_cache
 
 from src.config import MODEL_PATH, MODEL_VERSION
-from src.predict import SpamPredictor
+from src.predict import get_predictor
 
 
 @lru_cache()
-def get_predictor() -> SpamPredictor:
-    return SpamPredictor(MODEL_PATH)
+def get_cached_predictor() -> "SpamPredictor":
+    return get_predictor(MODEL_PATH)
 
 
 @lru_cache()
@@ -19,7 +19,7 @@ def get_model_metadata() -> dict:
             return json.load(f)
     return {
         "version": MODEL_VERSION,
-        "algorithm": "logistic_regression",
+        "algorithm": "multinomial_naive_bayes",
         "features": "tfidf_ngrams_1_2",
         "training_dataset": "spam.csv",
         "accuracy": 0.0,

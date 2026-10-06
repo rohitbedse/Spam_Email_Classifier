@@ -9,6 +9,7 @@ services:
     environment:
       - API_HOST=0.0.0.0
       - API_PORT=8000
+      - ALLOWED_ORIGINS=http://streamlit:8501,http://localhost:8501
     volumes:
       - ./models:/app/models:ro
       - ./nltk_data:/app/nltk_data:ro

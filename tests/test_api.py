@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from pathlib import Path
 
 from api.main import app
-from api.dependencies import get_predictor, get_model_metadata
+from api.dependencies import get_cached_predictor, get_model_metadata
 from src.predict import SpamPredictor
 
 
@@ -33,7 +33,7 @@ class MockPredictor:
 
 @pytest.fixture
 def mock_dependencies():
-    app.dependency_overrides[get_predictor] = lambda: MockPredictor()
+    app.dependency_overrides[get_cached_predictor] = lambda: MockPredictor()
     app.dependency_overrides[get_model_metadata] = lambda: {
         "version": "1.0.0",
         "algorithm": "multinomial_naive_bayes",
